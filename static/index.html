@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pentest Vulnerability Report Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+    <style>
+        .navbar-brand {
+            font-weight: bold;
+            color: #dc3545 !important;
+        }
+        .vulnerability-card {
+            border-left: 4px solid #dc3545;
+            margin-bottom: 1rem;
+        }
+        .severity-critical { border-left-color: #dc3545; }
+        .severity-high { border-left-color: #fd7e14; }
+        .severity-medium { border-left-color: #ffc107; }
+        .severity-low { border-left-color: #28a745; }
+        .loading-spinner {
+            display: none;
+        }
+        .image-preview {
+            max-width: 200px;
+            max-height: 150px;
+            margin: 5px;
+            border-radius: 5px;
+            border: 2px solid #dee2e6;
+        }
+        .tinymce-editor {
+            height: 300px !important;
+            min-height: 300px !important;
+            width: 100% !important;
+            border: 1px solid #dee2e6 !important;
+            border-radius: 8px !important;
+        }
+        .tox-tinymce {
+            border-radius: 8px !important;
+            border: 1px solid #dee2e6 !important;
+            height: 300px !important;
+            min-height: 300px !important;
+        }
+        .tox-edit-area__iframe {
+            border-radius: 0 0 8px 8px !important;
+            height: 250px !important;
+        }
+        .tox-toolbar {
+            border-bottom: 1px solid #dee2e6 !important;
+        }
+        /* Ensure textarea is properly sized when editor fails */
+        #steps-editor {
+            height: 300px !important;
+            min-height: 300px !important;
+            width: 100% !important;
+            border: 1px solid #dee2e6 !important;
+            border-radius: 8px !important;
+            padding: 10px !important;
+            font-family: -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif !important;
+            font-size: 14px !important;
+            resize: vertical !important;
+        }
+        /* Force editor containers to be visible */
+        .tox-tinymce, #steps-editor {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        .form-section {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .ai-suggestion {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        .ai-suggestion h6 {
+            color: #1976d2;
+            margin-bottom: 0.5rem;
+        }
+        .btn-ai {
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+        }
+        .btn-ai:hover {
+            background: linear-gradient(45deg, #764ba2 0%, #667eea 100%);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-shield-alt"></i> Pentest Report Generator
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="#" onclick="showPage('add-vuln')">
+                    <i class="fas fa-plus"></i> Add Vulnerability
+                </a>
+                <a class="nav-link" href="#" onclick="showPage('view-reports')">
+                    <i class="fas fa-list"></i> View Reports
+                </a>
+                <a class="nav-link" href="#" onclick="showPage('export')">
+                    <i class="fas fa-download"></i> Export
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Add Vulnerability Page -->
+        <div id="add-vuln-page" class="page">
+            <div class="row">
+                <div class="col-12">
+                    <h2><i class="fas fa-bug"></i> Add New Vulnerability</h2>
+                    <p class="text-muted">Create detailed vulnerability reports with AI assistance</p>
+                </div>
+            </div>
+
+            <form id="vulnerability-form">
+                <div class="form-section">
+                    <h5><i class="fas fa-info-circle"></i> Basic Information</h5>
+                <div class="row">
+                    <div class="col-md-8">
+                        <label for="title" class="form-label">Vulnerability Title *</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="title" name="title" required 
+                                   placeholder="e.g., Reflected Cross-Site Scripting in Search Functionality">
+                            <button type="button" class="btn btn-ai" onclick="generateWithAI()">
+                                <i class="fas fa-magic"></i> Generate with AI
+                            </button>
+                        </div>
+                        <small class="form-text text-muted">
+                            <i class="fas fa-info-circle"></i> 
+                            For AI features, install OLLAMA: <code>ollama serve</code> then <code>ollama pull llama3.2:3b</code>
+                        </small>
+                    </div>
+                        <div class="col-md-4">
+                            <label for="status" class="form-label">Status *</label>
+                            <select class="form-select" id="status" name="status" required>
+                                <option value="Open">Open</option>
+                                <option value="Closed">Closed</option>
+                                <option value="Mitigated">Mitigated</option>
+                                <option value="False Positive">False Positive</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <label for="location" class="form-label">Vulnerability Location *</label>
+                            <input type="text" class="form-control" id="location" name="location" required 
+                                   placeholder="e.g., https://example.com/search?q=...">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="instances" class="form-label">Instances</label>
+                            <input type="number" class="form-control" id="instances" name="instances" value="1" min="1">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="cwe_id" class="form-label">CWE ID</label>
+                            <input type="text" class="form-control" id="cwe_id" name="cwe_id" placeholder="e.g., 79">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Generated Content -->
+                <div id="ai-suggestions" class="ai-suggestion" style="display: none;">
+                    <h6><i class="fas fa-robot"></i> AI Generated Content</h6>
+                    <p class="text-muted">Review and modify the AI-generated content below:</p>
+                    <div id="ai-content"></div>
+                </div>
+
+                <div class="form-section">
+                    <h5><i class="fas fa-file-alt"></i> Detailed Information</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="impact" class="form-label">Impact Level *</label>
+                            <select class="form-select" id="impact" name="impact" required>
+                                <option value="Critical">Critical</option>
+                                <option value="High">High</option>
+                                <option value="Medium" selected>Medium</option>
+                                <option value="Low">Low</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="likelihood" class="form-label">Likelihood Level *</label>
+                            <select class="form-select" id="likelihood" name="likelihood" required>
+                                <option value="Critical">Critical</option>
+                                <option value="High">High</option>
+                                <option value="Medium" selected>Medium</option>
+                                <option value="Low">Low</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <label for="description" class="form-label">Vulnerability Description *</label>
+                            <textarea class="form-control" id="description" name="description" rows="4" required
+                                      placeholder="Detailed description of the vulnerability..."></textarea>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <label for="impact_description" class="form-label">Impact Description</label>
+                            <textarea class="form-control" id="impact_description" name="impact_description" rows="2"
+                                      placeholder="Describe the potential impact..."></textarea>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <label for="likelihood_description" class="form-label">Likelihood Description</label>
+                            <textarea class="form-control" id="likelihood_description" name="likelihood_description" rows="2"
+                                      placeholder="Describe the likelihood of exploitation..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h5><i class="fas fa-list-ol"></i> Steps to Reproduce</h5>
+                    <div class="mb-3">
+                        <label class="form-label">Steps to Reproduce *</label>
+                        <textarea id="steps-editor" class="tinymce-editor"></textarea>
+                        <small class="form-text text-muted">
+                            Use the rich text editor above. You can format text, add images with resize handles, and create professional documentation.
+                        </small>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h5><i class="fas fa-tools"></i> Remediation & References</h5>
+                    <div class="row">
+                        <div class="col-12">
+                            <label for="remediation" class="form-label">Remediation Steps *</label>
+                            <textarea class="form-control" id="remediation" name="remediation" rows="4" required
+                                      placeholder="Step-by-step remediation instructions..."></textarea>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <label for="owasp_category" class="form-label">OWASP Category</label>
+                            <input type="text" class="form-control" id="owasp_category" name="owasp_category" 
+                                   placeholder="e.g., A7: Cross-Site Scripting (XSS)">
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <label for="references" class="form-label">Reference Links</label>
+                            <textarea class="form-control" id="references" name="references" rows="3"
+                                      placeholder="https://owasp.org/...&#10;https://cwe.mitre.org/..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="button" class="btn btn-outline-secondary me-md-2" onclick="resetForm()">
+                        <i class="fas fa-undo"></i> Reset
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-save"></i> Save Vulnerability
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- View Reports Page -->
+        <div id="view-reports-page" class="page" style="display: none;">
+            <div class="row">
+                <div class="col-12">
+                    <h2><i class="fas fa-list"></i> Vulnerability Reports</h2>
+                    <p class="text-muted">View and manage your vulnerability reports</p>
+                </div>
+            </div>
+
+            <div id="reports-summary" class="row mb-4">
+                <!-- Summary cards will be populated here -->
+            </div>
+
+            <div id="reports-list">
+                <!-- Reports will be populated here -->
+            </div>
+        </div>
+
+        <!-- Export Page -->
+        <div id="export-page" class="page" style="display: none;">
+            <div class="row">
+                <div class="col-12">
+                    <h2><i class="fas fa-download"></i> Export Reports</h2>
+                    <p class="text-muted">Export your vulnerability reports in your preferred format</p>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Export Options</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="d-grid">
+                                        <button class="btn btn-outline-primary btn-lg" onclick="exportReport('markdown')">
+                                            <i class="fas fa-file-alt"></i> Export as Markdown
+                                        </button>
+                                        <small class="text-muted mt-2">Download as .md file for easy editing and sharing</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-grid">
+                                        <button class="btn btn-outline-danger btn-lg" onclick="exportReport('pdf')">
+                                            <i class="fas fa-file-pdf"></i> Export as PDF
+                                        </button>
+                                        <small class="text-muted mt-2">Download as .pdf file for professional presentation</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="export-content">
+                <!-- Export content will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3">Generating vulnerability details with AI...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="static/app.js"></script>
+</body>
+</html>
